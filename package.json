@@ -1,0 +1,32 @@
+{
+  "name": "seo-geo-check",
+  "version": "1.0.0",
+  "description": "ぞろ屋式 SEO/GEO/AIO/LLMO 多軸診断ツール",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3002",
+    "build": "next build",
+    "start": "next start -p 3002",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^143.0.4",
+    "cheerio": "^1.0.0",
+    "lucide-react": "^0.469.0",
+    "next": "^15.5.14",
+    "puppeteer": "^24.15.0",
+    "puppeteer-core": "^24.40.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}

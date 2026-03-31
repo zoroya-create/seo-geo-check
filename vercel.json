@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "src/app/api/diagnose/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/pdf/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
