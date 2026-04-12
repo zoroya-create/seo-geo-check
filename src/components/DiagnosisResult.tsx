@@ -2,7 +2,7 @@
 import { useState } from "react";
 import {
   Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp,
-  Search, MapPin, Bot, Share2, Shield, Cpu, Building2, Gauge,
+  Search, MapPin, Bot, Share2, Shield, Cpu, Building2, Gauge, ExternalLink,
 } from "lucide-react";
 import type { DiagnosisResult, AxisResult } from "@/lib/types";
 import { GradeBadge } from "./Gradebadge";
@@ -232,6 +232,20 @@ export function DiagnosisResultView({
             <GradeBadge grade={activeAxisData.grade} />
           </div>
           <CheckTable checks={activeAxisData.checks} />
+          {activeAxis === "psi" && activeAxisData.checks.every((c) => c.status === "skip") && (
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 leading-relaxed">
+              表示速度分析（PageSpeed Insights）については API 制限の関係で計測できない場合があります。その際は、
+              <a
+                href={`https://pagespeed.web.dev/analysis?url=${encodeURIComponent(result.meta.url)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-coconala-purple font-semibold underline underline-offset-2 hover:text-coconala-purple-dark"
+              >
+                こちら
+              </a>
+              から手動で確認ください。
+            </div>
+          )}
         </div>
       )}
 
@@ -248,6 +262,22 @@ export function DiagnosisResultView({
           </button>
         </div>
         <IssueList result={result} />
+      </div>
+
+      {/* AI対策 お問い合わせCTA */}
+      <div className="bg-gradient-to-r from-coconala-purple/5 to-coconala-purple/10 rounded-2xl border border-coconala-purple/20 p-6 text-center">
+        <p className="text-sm text-gray-700 mb-3">
+          今すぐ自社サイトのAI検索対策をしたい場合は、こちらからお問い合わせください。
+        </p>
+        <a
+          href="https://zoroya.co.jp/contact/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 bg-coconala-purple text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-coconala-purple-dark transition-colors"
+        >
+          お問い合わせはこちら
+          <ExternalLink size={14} />
+        </a>
       </div>
     </div>
   );
