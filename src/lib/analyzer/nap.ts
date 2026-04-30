@@ -96,10 +96,14 @@ export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
   });
 
   // 電話番号表記統一チェック
+  // FAX 周辺の番号は TEL ではないので統一チェック対象から除外する
+  const cleanedBody = bodyText
+    .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\d()\-ー]{8,15}/gi, "")
+    .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\s:：][\d()\-ー]{8,15}/gi, "");
   const telPatterns = [
-    ...(bodyText.match(/\d{2,4}[-ー]\d{2,4}[-ー]\d{4}/g) ?? []),
-    ...(bodyText.match(/\(\d{2,4}\)\d{2,4}[-ー]\d{4}/g) ?? []),
-    ...(bodyText.match(/\d{10,11}/g) ?? []),
+    ...(cleanedBody.match(/\d{2,4}[-ー]\d{2,4}[-ー]\d{4}/g) ?? []),
+    ...(cleanedBody.match(/\(\d{2,4}\)\d{2,4}[-ー]\d{4}/g) ?? []),
+    ...(cleanedBody.match(/\d{10,11}/g) ?? []),
   ];
   const uniqueFormats = new Set(telPatterns.map((t) => t.replace(/\d/g, "N")));
   const isUnified = uniqueFormats.size <= 1;
