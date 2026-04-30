@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
 import { fetchHtml, validateUrl } from "./fetch-html";
+import { flattenJsonLd, hasType } from "./jsonld-utils";
 
 /**
  * サイト全体評価（複数ページ巡回）モジュール。
@@ -141,6 +142,23 @@ function mergeSubpageSignals(main$: CheerioAPI, sub$: CheerioAPI): void {
       }
     }
   );
+
+  // JSON-LD のうち FAQPage のみメインに合成（他スキーマと干渉しないよう絞る）
+  // FAQPage はサブページごとに固有なので合成しても重複扱いになりにくい
+  const subNodes = flattenJsonLd(sub$);
+  const faqNodes = subNodes.filter((n) => hasType(n, ["FAQPage"]));
+  for (const faq of faqNodes) {
+    try {
+      const json = JSON.stringify(faq);
+      // <script>タグエスケープ（XSS対策の保険として </script> を分割）
+      const escaped = json.replace(/<\/script/gi, "<\\/script");
+      main$("head").append(
+        `<script type="application/ld+json" data-merged-faq="true">${escaped}</script>`
+      );
+    } catch {
+      /* skip non-serializable */
+    }
+  }
 
   // dl / details 構造（FAQっぽい記法）
   sub$("dl, details").each((_, el) => {

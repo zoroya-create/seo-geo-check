@@ -96,15 +96,24 @@ export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
   });
 
   // 電話番号表記統一チェック
-  // FAX 周辺の番号は TEL ではないので統一チェック対象から除外する
-  const cleanedBody = bodyText
-    .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\d()\-ー]{8,15}/gi, "")
-    .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\s:：][\d()\-ー]{8,15}/gi, "");
-  const telPatterns = [
-    ...(cleanedBody.match(/\d{2,4}[-ー]\d{2,4}[-ー]\d{4}/g) ?? []),
-    ...(cleanedBody.match(/\(\d{2,4}\)\d{2,4}[-ー]\d{4}/g) ?? []),
-    ...(cleanedBody.match(/\d{10,11}/g) ?? []),
-  ];
+  // 戦略：TEL/電話 マーカーが付いている番号だけを対象にする（FAX や他の番号と混同しない）
+  // フォールバック：マーカーが見つからない場合のみ FAX 除外して全番号スキャン
+  const telWithMarkerMatches = [...bodyText.matchAll(
+    /(?:TEL|tel|電話)[\s:：]*([\d()\-ー]{10,15})/gi,
+  )];
+  let telPatterns: string[] = [];
+  if (telWithMarkerMatches.length > 0) {
+    telPatterns = telWithMarkerMatches.map((m) => m[1]);
+  } else {
+    // フォールバック: FAX除外して全電話番号スキャン
+    const cleanedBody = bodyText
+      .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\s:：]*[\d()\-ー]{8,15}/gi, "");
+    telPatterns = [
+      ...(cleanedBody.match(/\d{2,4}[-ー]\d{2,4}[-ー]\d{4}/g) ?? []),
+      ...(cleanedBody.match(/\(\d{2,4}\)\d{2,4}[-ー]\d{4}/g) ?? []),
+      ...(cleanedBody.match(/\d{10,11}/g) ?? []),
+    ];
+  }
   const uniqueFormats = new Set(telPatterns.map((t) => t.replace(/\d/g, "N")));
   const isUnified = uniqueFormats.size <= 1;
   checks.push({
