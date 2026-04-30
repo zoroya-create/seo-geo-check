@@ -1,58 +1,16 @@
 import type { CheerioAPI } from "cheerio";
 import type { SpecInfo } from "../types";
+import { flattenJsonLd, findBusinessNode, JsonLdNode } from "./jsonld-utils";
 
 /**
  * JSON-LD（LocalBusiness / Organization / Corporation）から
  * SPEC情報（社名・住所・電話）を自動抽出する。
  *
  * - ユーザー入力された値があればそれを優先（autoSpecは穴埋めのみ）
- * - @graph ネスト構造にも対応
+ * - @graph ネスト構造にも対応（jsonld-utils を使用）
  * - PostalAddress オブジェクト形式の住所も対応
+ * - 国際表記の電話番号（+81-）は日本国内表記（0始まり）に正規化
  */
-
-type JsonLdNode = Record<string, unknown>;
-
-/** すべての @type を持つノードをフラットに取り出す */
-function flattenJsonLd($: CheerioAPI): JsonLdNode[] {
-  const nodes: JsonLdNode[] = [];
-
-  const visit = (obj: unknown) => {
-    if (Array.isArray(obj)) {
-      obj.forEach(visit);
-      return;
-    }
-    if (obj === null || typeof obj !== "object") return;
-    const node = obj as JsonLdNode;
-    nodes.push(node);
-    // @graph 配下を再帰
-    if (node["@graph"]) visit(node["@graph"]);
-  };
-
-  $('script[type="application/ld+json"]').each((_, el) => {
-    try {
-      visit(JSON.parse($(el).html() ?? "{}"));
-    } catch {
-      /* skip malformed */
-    }
-  });
-
-  return nodes;
-}
-
-/** ノードの @type に対象タイプが含まれるか判定 */
-function isBusinessNode(node: JsonLdNode): boolean {
-  const t = node["@type"];
-  const targets = ["LocalBusiness", "Organization", "Corporation"];
-  if (typeof t === "string") {
-    return targets.some((target) => t.includes(target));
-  }
-  if (Array.isArray(t)) {
-    return t.some(
-      (v) => typeof v === "string" && targets.some((target) => v.includes(target))
-    );
-  }
-  return false;
-}
 
 /** PostalAddress オブジェクトを文字列に変換 */
 function addressToString(addr: unknown): string | undefined {
@@ -60,7 +18,8 @@ function addressToString(addr: unknown): string | undefined {
   if (addr && typeof addr === "object") {
     const a = addr as Record<string, unknown>;
     const parts = [
-      a.postalCode ? `〒${String(a.postalCode)}` : "",
+      // 〒記号は付けない（NAP判定の normalize と整合）
+      a.postalCode ? String(a.postalCode) : "",
       a.addressRegion as string,
       a.addressLocality as string,
       a.streetAddress as string,
@@ -68,6 +27,17 @@ function addressToString(addr: unknown): string | undefined {
     return parts.length > 0 ? parts.join(" ").trim() : undefined;
   }
   return undefined;
+}
+
+/**
+ * 国際表記の電話番号を日本国内表記に変換。
+ * 例: "+81-53-436-7011" → "053-436-7011"
+ *     "+81 53 436 7011" → "053-436-7011"
+ *     "053-436-7011" → "053-436-7011" （変更なし）
+ */
+function normalizeJpTel(tel: string | undefined): string | undefined {
+  if (!tel) return undefined;
+  return tel.replace(/^\+81[- ]?/, "0").trim() || undefined;
 }
 
 export interface AutoSpecResult {
@@ -84,8 +54,8 @@ export function extractSpecFromJsonLd(
   $: CheerioAPI,
   userSpec?: SpecInfo
 ): AutoSpecResult {
-  const nodes = flattenJsonLd($);
-  const bizNode = nodes.find(isBusinessNode);
+  const nodes: JsonLdNode[] = flattenJsonLd($);
+  const bizNode = findBusinessNode(nodes);
 
   if (!bizNode) {
     return { spec: userSpec, autoFilled: false };
@@ -93,7 +63,7 @@ export function extractSpecFromJsonLd(
 
   const fromJsonLd: SpecInfo = {
     businessName: typeof bizNode.name === "string" ? bizNode.name : undefined,
-    tel: typeof bizNode.telephone === "string" ? bizNode.telephone : undefined,
+    tel: normalizeJpTel(typeof bizNode.telephone === "string" ? bizNode.telephone : undefined),
     address: addressToString(bizNode.address),
   };
 

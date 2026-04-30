@@ -1,29 +1,15 @@
 import type { CheerioAPI } from "cheerio";
 import type { CheckItem } from "../types";
 import { buildAxisResult } from "./score";
-
-function parseJsonLd($: CheerioAPI): Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-  $('script[type="application/ld+json"]').each((_, el) => {
-    try {
-      const parsed = JSON.parse($(el).html() ?? "{}");
-      if (Array.isArray(parsed)) results.push(...parsed);
-      else results.push(parsed);
-    } catch { /* skip */ }
-  });
-  return results;
-}
+import { flattenJsonLd, hasType } from "./jsonld-utils";
 
 export function analyzeAIO($: CheerioAPI) {
   const checks: CheckItem[] = [];
-  const schemas = parseJsonLd($);
+  const schemas = flattenJsonLd($);
   const bodyText = $("body").text();
 
   // FAQPage スキーマ
-  const hasFaqSchema = schemas.some((s) => {
-    const t = s["@type"];
-    return t === "FAQPage" || (Array.isArray(t) && t.includes("FAQPage"));
-  });
+  const hasFaqSchema = schemas.some((s) => hasType(s, ["FAQPage"]));
   checks.push({
     id: "aio_faq_schema",
     label: "FAQPageスキーマ",
@@ -83,12 +69,7 @@ export function analyzeAIO($: CheerioAPI) {
   });
 
   // Article / WebPage スキーマ
-  const hasArticleOrWebPage = schemas.some((s) => {
-    const t = s["@type"];
-    if (typeof t === "string") return t.includes("Article") || t.includes("WebPage");
-    if (Array.isArray(t)) return t.some((v) => typeof v === "string" && (v.includes("Article") || v.includes("WebPage")));
-    return false;
-  });
+  const hasArticleOrWebPage = schemas.some((s) => hasType(s, ["Article", "WebPage"]));
   checks.push({
     id: "aio_article_schema",
     label: "Article / WebPageスキーマ",

@@ -1,40 +1,24 @@
 import type { CheerioAPI } from "cheerio";
 import type { CheckItem, SpecInfo } from "../types";
 import { buildAxisResult } from "./score";
+import { flattenJsonLd, findBusinessNode } from "./jsonld-utils";
 
 function normalize(s: string) {
   return s
-    .replace(/[\u3000]/g, " ")
+    .replace(/[　]/g, " ")
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
+    .replace(/[〒]/g, "")
     .replace(/\s+/g, "")
     .replace(/[()（）]/g, "-")
     .trim();
-}
-
-function parseJsonLd($: CheerioAPI): Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-  $('script[type="application/ld+json"]').each((_, el) => {
-    try {
-      const parsed = JSON.parse($(el).html() ?? "{}");
-      if (Array.isArray(parsed)) results.push(...parsed);
-      else results.push(parsed);
-    } catch { /* skip */ }
-  });
-  return results;
 }
 
 export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
   const checks: CheckItem[] = [];
   const footerText = normalize($("footer").text());
   const bodyText = normalize($("body").text());
-  const schemas = parseJsonLd($);
-
-  const localBiz = schemas.find((s) => {
-    const t = s["@type"];
-    if (typeof t === "string") return t.includes("LocalBusiness") || t.includes("Organization");
-    if (Array.isArray(t)) return t.some((v) => typeof v === "string" && v.includes("LocalBusiness"));
-    return false;
-  });
+  const schemas = flattenJsonLd($);
+  const localBiz = findBusinessNode(schemas);
 
   // フッター 社名
   if (spec?.businessName) {
@@ -76,7 +60,9 @@ export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
 
   // フッター 電話番号
   if (spec?.tel) {
-    const normTel = normalize(spec.tel).replace(/-/g, "");
+    // +81-53- 国際表記を 053- 国内表記に変換してから比較
+    const telForCompare = spec.tel.replace(/^\+81[- ]?/, "0");
+    const normTel = normalize(telForCompare).replace(/-/g, "");
     const normFooter = footerText.replace(/-/g, "");
     const inFooter = normFooter.includes(normTel);
     checks.push({

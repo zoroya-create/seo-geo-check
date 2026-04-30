@@ -66,7 +66,32 @@ function dedupeAgainstMain(mainUrl: string, urls: string[]): string[] {
   });
 }
 
-/** 1つのサブページを fetch して Cheerio に変換（失敗時は null） */
+/**
+ * 404 / Not Found ページかをヒューリスティックに判定。
+ *
+ * fetchHtml は status 404 を例外にせず HTML を返すので、
+ * WordPress のカスタム 404 ページ等に騙されないように
+ * <title> や meta robots、本文から判別する。
+ */
+function looksLike404(sub$: CheerioAPI): boolean {
+  const title = sub$("title").text().trim();
+  if (/404|Not Found|お探しのページ|ページが見つかり|ページが存在/i.test(title)) {
+    return true;
+  }
+  // meta robots に noindex があれば 404 等の隠しページの可能性
+  const robots = sub$('meta[name="robots"]').attr("content") ?? "";
+  if (/noindex/i.test(robots) && /404|notfound/i.test(robots)) {
+    return true;
+  }
+  // h1 / 本文先頭に 404 シグナル
+  const h1 = sub$("h1").first().text().trim();
+  if (/404|Not Found|ページが見つかり/i.test(h1)) {
+    return true;
+  }
+  return false;
+}
+
+/** 1つのサブページを fetch して Cheerio に変換（失敗時・404時は null） */
 async function tryFetchSubpage(url: string): Promise<CheerioAPI | null> {
   // SSRF対策の防衛深層：候補URL生成時に同一オリジン制限はかけているが、
   // ここでも改めて validateUrl を経由してプライベートIP・不正プロトコルを弾く
@@ -82,7 +107,9 @@ async function tryFetchSubpage(url: string): Promise<CheerioAPI | null> {
     const { html } = await fetchHtml(url);
     clearTimeout(timer);
     if (!html) return null;
-    return cheerio.load(html);
+    const sub$ = cheerio.load(html);
+    if (looksLike404(sub$)) return null;
+    return sub$;
   } catch {
     clearTimeout(timer);
     return null;
@@ -98,22 +125,27 @@ async function tryFetchSubpage(url: string): Promise<CheerioAPI | null> {
  * - dl / details / FAQ系セクション（AIO軸の FAQ コンテンツ検出用）
  */
 function mergeSubpageSignals(main$: CheerioAPI, sub$: CheerioAPI): void {
-  // Google Maps iframe を main の body に追加
+  // Google Maps iframe を main の body に追加（src属性から手動でiframeタグを再構築）
   sub$('iframe[src*="google.com/maps"], iframe[src*="maps.google"]').each(
     (_, el) => {
-      const iframeHtml = sub$.html(el);
-      if (iframeHtml) {
-        main$("body").append(`<!-- merged-from-subpage -->${iframeHtml}`);
+      const src = sub$(el).attr("src");
+      if (src) {
+        // outerHTML 取得ではなく、必要属性を抽出してiframeを再構築
+        // （cheerio v1 で `$.html(el)` の挙動が不安定なため）
+        main$("body").append(
+          `<iframe data-merged-from-subpage="true" src="${src}"></iframe>`
+        );
       }
     }
   );
 
   // dl / details 構造（FAQっぽい記法）
   sub$("dl, details").each((_, el) => {
-    const html = sub$.html(el);
-    if (html && html.length < 50_000) {
+    const inner = sub$(el).html();
+    const tagName = (el as { tagName?: string }).tagName ?? "div";
+    if (inner && inner.length < 50_000) {
       main$("body").append(
-        `<div data-merged-faq>${html}</div>`
+        `<${tagName} data-merged-faq>${inner}</${tagName}>`
       );
     }
   });

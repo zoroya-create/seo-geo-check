@@ -1,29 +1,13 @@
 import type { CheerioAPI } from "cheerio";
 import type { CheckItem, SpecInfo } from "../types";
 import { buildAxisResult } from "./score";
-
-function parseJsonLd($: CheerioAPI): Record<string, unknown>[] {
-  const results: Record<string, unknown>[] = [];
-  $('script[type="application/ld+json"]').each((_, el) => {
-    try {
-      const parsed = JSON.parse($(el).html() ?? "{}");
-      if (Array.isArray(parsed)) results.push(...parsed);
-      else results.push(parsed);
-    } catch { /* skip */ }
-  });
-  return results;
-}
+import { flattenJsonLd, findBusinessNode } from "./jsonld-utils";
 
 export function analyzeMEO($: CheerioAPI, spec?: SpecInfo) {
   const checks: CheckItem[] = [];
-  const schemas = parseJsonLd($);
+  const schemas = flattenJsonLd($);
 
-  const localBiz = schemas.find((s) => {
-    const t = s["@type"];
-    if (typeof t === "string") return t.includes("LocalBusiness") || t.includes("Organization") || t.includes("Corporation");
-    if (Array.isArray(t)) return t.some((v) => typeof v === "string" && (v.includes("LocalBusiness") || v.includes("Organization")));
-    return false;
-  });
+  const localBiz = findBusinessNode(schemas);
 
   // LocalBusiness JSON-LD
   checks.push({
