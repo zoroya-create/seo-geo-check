@@ -20,6 +20,10 @@ export interface DiagnoseRequest {
   options?: {
     skipPSI?: boolean;
     psiApiKey?: string;
+    /** サイト全体評価（複数ページ巡回）。デフォルト true */
+    multiPage?: boolean;
+    /** SPEC情報未入力時に JSON-LD から自動補完する。デフォルト true */
+    autoSpec?: boolean;
   };
 }
 
@@ -77,6 +81,10 @@ export interface DiagnosisResult {
     url: string;
     diagnosedAt: string;
     spec?: SpecInfo;
+    /** 巡回したサブページのURL（複数ページ評価モード時） */
+    crawledPages?: string[];
+    /** SPECがJSON-LDから自動補完されたか */
+    specAutoFilled?: boolean;
   };
   summary: {
     totalScore: number;

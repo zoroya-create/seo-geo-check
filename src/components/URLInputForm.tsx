@@ -20,6 +20,7 @@ export function URLInputForm({ onSubmit, loading }: Props) {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [kwInput, setKwInput] = useState("");
   const [urlError, setUrlError] = useState("");
+  const [multiPage, setMultiPage] = useState(true);   // デフォルトON：サイト全体評価
 
   const addKeyword = () => {
     const kw = kwInput.trim();
@@ -52,7 +53,11 @@ export function URLInputForm({ onSubmit, loading }: Props) {
     };
     const hasSpec = Object.values(spec).some((v) => v !== undefined);
 
-    onSubmit({ url: normalized, spec: hasSpec ? spec : undefined });
+    onSubmit({
+      url: normalized,
+      spec: hasSpec ? spec : undefined,
+      options: { multiPage },
+    });
   };
 
   return (
@@ -78,6 +83,22 @@ export function URLInputForm({ onSubmit, loading }: Props) {
         )}
       </div>
 
+      {/* サイト全体評価モード（デフォルトON） */}
+      <label className="flex items-center gap-2.5 px-5 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-pointer select-none hover:bg-gray-50 transition-colors">
+        <input
+          type="checkbox"
+          checked={multiPage}
+          onChange={(e) => setMultiPage(e.target.checked)}
+          className="w-4 h-4 accent-coconala-purple cursor-pointer"
+        />
+        <span className="text-sm font-semibold text-gray-700">
+          サイト全体として評価する
+          <span className="ml-1 text-xs font-normal text-gray-400">
+            （会社情報・FAQページも自動でチェック）
+          </span>
+        </span>
+      </label>
+
       {/* SPEC（任意）アコーディオン */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <button
@@ -88,6 +109,11 @@ export function URLInputForm({ onSubmit, loading }: Props) {
           <span>精度向上オプション（SPEC情報・任意）</span>
           {showSpec ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
+        {!showSpec && (
+          <p className="px-5 pb-3 text-[11px] text-gray-400 -mt-1">
+            未入力でもサイトのJSON-LDから自動補完されます。明示入力するとより正確に評価されます。
+          </p>
+        )}
         {showSpec && (
           <div className="px-5 pb-5 grid sm:grid-cols-2 gap-4 border-t border-gray-50">
             <div>
