@@ -15,20 +15,23 @@ import { fetchHtml, validateUrl } from "./fetch-html";
 
 /** よくある会社情報・FAQ系URLのパス候補（優先順） */
 const CANDIDATE_PATHS = [
+  // FAQ・Q&A 系（AIO/GEO スコアに直結するので最優先）
+  "/faq/",
+  "/q-and-a/",
+  "/concept/faq/",
+  // 会社情報・アクセス系（MEO/NAP に直結）
   "/company/",
   "/about/",
   "/about-us/",
   "/contact/",
-  "/contact-us/",
   "/access/",
-  "/faq/",
-  "/q-and-a/",
-  "/concept/faq/",
+  // 流れ・コンセプト系
   "/concept/flow/",
+  "/contact-us/",
 ];
 
 /** 試行するサブページの最大数（過剰なリクエストを避ける） */
-const MAX_SUBPAGES = 6;
+const MAX_SUBPAGES = 8;
 
 /** サブページ取得時のタイムアウト（ms） */
 const SUBPAGE_TIMEOUT_MS = 6000;
