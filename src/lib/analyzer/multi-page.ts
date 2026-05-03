@@ -127,6 +127,7 @@ async function tryFetchSubpage(url: string): Promise<CheerioAPI | null> {
  * 合成対象:
  * - Google Maps iframe（MEO軸の検出用）
  * - dl / details / FAQ系セクション（AIO軸の FAQ コンテンツ検出用）
+ * - 代表者・著者の顔写真っぽい img（EEAT軸の検出用）
  */
 function mergeSubpageSignals(main$: CheerioAPI, sub$: CheerioAPI): void {
   // Google Maps iframe を main の body に追加（src属性から手動でiframeタグを再構築）
@@ -181,6 +182,35 @@ function mergeSubpageSignals(main$: CheerioAPI, sub$: CheerioAPI): void {
     ) {
       main$("body").append(
         `<div data-merged-faq-section>${text}</div>`
+      );
+    }
+  });
+
+  // 代表者・著者の顔写真っぽい img をメインに合成（EEAT軸の検出用）。
+  // 判定キーワードは eeat.ts の analyzeEEAT と同じセット（代表/顔/プロフィール/profile/author/staff など）。
+  // サブページ（about / company / profile）に代表者の顔写真がある場合、
+  // サイト全体としては顔写真ありと判定する（正当な評価）。
+  // alt も src も両方ともマッチしないものは合成しない（無関係画像の混入を防ぐ）。
+  sub$("img").each((_, el) => {
+    const alt = (sub$(el).attr("alt") ?? "").toLowerCase();
+    const src = sub$(el).attr("src") ?? "";
+    const dataSrc = sub$(el).attr("data-src") ?? "";
+    const srcCombined = src + " " + dataSrc;
+
+    const altMatch = /代表|顔|プロフィール|profile|author|staff|社長|director|founder/.test(alt);
+    const srcMatch = /profile|staff|member|author|portrait/i.test(srcCombined);
+
+    if (altMatch || srcMatch) {
+      // 重複合成を避けるため、同じ src のものは1回だけ
+      const checkSrc = src || dataSrc;
+      if (!checkSrc) return;
+      const escSrc = checkSrc.replace(/"/g, "&quot;");
+      const escAlt = alt.replace(/"/g, "&quot;");
+      // 既に同じ src で合成済みでないか確認
+      const exists = main$(`img[data-merged-portrait="true"][src="${escSrc}"]`).length > 0;
+      if (exists) return;
+      main$("body").append(
+        `<img data-merged-portrait="true" alt="${escAlt}" src="${escSrc}">`
       );
     }
   });
