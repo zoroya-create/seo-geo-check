@@ -41,7 +41,7 @@ export function analyzeMEO($: CheerioAPI, spec?: SpecInfo) {
     checks.push({ id: "meo_name_match", label: "ビジネス名一致", status: "skip", score: 0, maxScore: 0, priority: "low" });
   }
 
-  // address
+  // address（findBusinessNode が返す 1ノードのみ参照）
   if (spec?.address) {
     const addr = (localBiz?.["address"] as Record<string, string>)?.["streetAddress"] ?? (localBiz?.["address"] as string) ?? "";
     const match = addr.length > 0;
@@ -60,7 +60,7 @@ export function analyzeMEO($: CheerioAPI, spec?: SpecInfo) {
     checks.push({ id: "meo_address", label: "住所（JSON-LD設定）", status: "skip", score: 0, maxScore: 0, priority: "low" });
   }
 
-  // telephone
+  // telephone（findBusinessNode が返す 1ノードのみ参照）
   if (spec?.tel) {
     const phone = (localBiz?.["telephone"] as string) ?? "";
     const match = phone.length > 0;
@@ -79,7 +79,10 @@ export function analyzeMEO($: CheerioAPI, spec?: SpecInfo) {
     checks.push({ id: "meo_telephone", label: "電話番号（JSON-LD設定）", status: "skip", score: 0, maxScore: 0, priority: "low" });
   }
 
-  // openingHours
+  // openingHours（findBusinessNode が返す 1ノードのみ参照）
+  // 複数ノード（AIOSEO の Organization と独自 LocalBusiness 等）に分散している場合でも、
+  // 「LocalBusiness 派生 1ノードに集約されている」状態を正解とみなすため横断はしない。
+  // Google MEO のベストプラクティスは「1つの LocalBusiness ノードに必要情報を集約」すること。
   const hours = localBiz?.["openingHours"] ?? localBiz?.["openingHoursSpecification"];
   checks.push({
     id: "meo_opening_hours",
@@ -94,9 +97,16 @@ export function analyzeMEO($: CheerioAPI, spec?: SpecInfo) {
   });
 
   // Google Maps iframe
+  // LiteSpeed Cache などの遅延読み込みプラグインが iframe の src を data-src に書き換える
+  // ケースを考慮し、src / data-src / data-lazy-src / data-lazysrc すべてを対象とする。
   let hasMaps = false;
   $("iframe").each((_, el) => {
-    const src = $(el).attr("src") ?? "";
+    const src =
+      $(el).attr("src") ??
+      $(el).attr("data-src") ??
+      $(el).attr("data-lazy-src") ??
+      $(el).attr("data-lazysrc") ??
+      "";
     if (src.includes("google.com/maps") || src.includes("maps.google")) hasMaps = true;
   });
   checks.push({
