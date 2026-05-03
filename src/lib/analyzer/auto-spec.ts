@@ -12,14 +12,18 @@ import { flattenJsonLd, findBusinessNode, JsonLdNode } from "./jsonld-utils";
  * - 国際表記の電話番号（+81-）は日本国内表記（0始まり）に正規化
  */
 
-/** PostalAddress オブジェクトを文字列に変換 */
+/**
+ * PostalAddress オブジェクトを「住所」文字列に変換する。
+ *
+ * postalCode（郵便番号）は住所表記としてフッターやコンタクトページに記載されないことが多いため、
+ * spec.address からは除外する。郵便番号があるサイトと無いサイトを同じ基準で判定できるようにする。
+ * 含めると、フッターに郵便番号が無いだけで NAP の住所マッチが外れて減点される誤検知が出る。
+ */
 function addressToString(addr: unknown): string | undefined {
   if (typeof addr === "string") return addr.trim() || undefined;
   if (addr && typeof addr === "object") {
     const a = addr as Record<string, unknown>;
     const parts = [
-      // 〒記号は付けない（NAP判定の normalize と整合）
-      a.postalCode ? String(a.postalCode) : "",
       a.addressRegion as string,
       a.addressLocality as string,
       a.streetAddress as string,
