@@ -116,15 +116,20 @@ export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
   }
   const uniqueFormats = new Set(telPatterns.map((t) => t.replace(/\d/g, "N")));
   const isUnified = uniqueFormats.size <= 1;
+  // skip 時は maxScore=0 にして合計スコアの計算対象から除外する
+  // （電話番号が記載されていないサイトでは「表記の統一」をチェックしようがないため、
+  //   maxScore=10 のまま 0/10 で計算すると、別軸の「フッター電話番号無し」と
+  //   実質二重減点になる不公平な計算になる）
+  const isSkip = telPatterns.length === 0;
   checks.push({
     id: "nap_tel_format",
     label: "電話番号表記形式の統一",
-    status: telPatterns.length === 0 ? "skip" : isUnified ? "ok" : "warn",
-    detectedValue: telPatterns.length === 0 ? "電話番号未検出" : `${uniqueFormats.size}種の表記形式`,
+    status: isSkip ? "skip" : isUnified ? "ok" : "warn",
+    detectedValue: isSkip ? "電話番号未検出" : `${uniqueFormats.size}種の表記形式`,
     recommendedValue: "ハイフン形式で統一（例: 03-1234-5678）",
-    suggestion: !isUnified ? "電話番号の表記形式が複数混在しています。1つの形式に統一してください。" : undefined,
-    score: telPatterns.length === 0 ? 0 : isUnified ? 10 : 3,
-    maxScore: 10,
+    suggestion: !isUnified && !isSkip ? "電話番号の表記形式が複数混在しています。1つの形式に統一してください。" : undefined,
+    score: isSkip ? 0 : isUnified ? 10 : 3,
+    maxScore: isSkip ? 0 : 10,
     priority: "low",
   });
 
