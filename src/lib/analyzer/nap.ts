@@ -20,64 +20,67 @@ export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
   const schemas = flattenJsonLd($);
   const localBiz = findBusinessNode(schemas);
 
-  // フッター 社名
+  // サイト内 社名（フッター or 本文 or 会社情報ページ等のどこか）
+  // 2026-05-05改修：「フッター限定」の厳格判定はSEO実態と乖離していたため、
+  // サイト内のどこかに記載があればOKと判定する仕様に変更（feedback_aio_footer_visible_html_default_off.md 参照）
   if (spec?.businessName) {
     const normBizName = normalize(spec.businessName);
-    const inFooter = footerText.includes(normBizName);
+    const inSite = footerText.includes(normBizName) || bodyText.includes(normBizName);
     checks.push({
       id: "nap_footer_name",
-      label: "フッター：社名",
-      status: inFooter ? "ok" : "warn",
-      detectedValue: inFooter ? "フッターに一致する記載あり" : "フッターに見当たらない",
+      label: "サイト内：社名",
+      status: inSite ? "ok" : "warn",
+      detectedValue: inSite ? "サイト内に記載あり" : "サイト内に見当たらない",
       recommendedValue: spec.businessName,
-      suggestion: inFooter ? undefined : `フッターに「${spec.businessName}」を記載してください。`,
-      score: inFooter ? 15 : 0,
+      suggestion: inSite ? undefined : `サイト内（会社情報・お問い合わせページ等）に「${spec.businessName}」を記載してください。`,
+      score: inSite ? 15 : 0,
       maxScore: 15,
       priority: "medium",
     });
   } else {
-    checks.push({ id: "nap_footer_name", label: "フッター：社名（SPEC未入力）", status: "skip", score: 0, maxScore: 0, priority: "low" });
+    checks.push({ id: "nap_footer_name", label: "サイト内：社名（SPEC未入力）", status: "skip", score: 0, maxScore: 0, priority: "low" });
   }
 
-  // フッター 住所
+  // サイト内 住所
   if (spec?.address) {
     const normAddr = normalize(spec.address);
-    const inFooter = footerText.includes(normAddr) || bodyText.includes(normAddr);
+    const inSite = footerText.includes(normAddr) || bodyText.includes(normAddr);
     checks.push({
       id: "nap_footer_address",
-      label: "フッター：住所",
-      status: inFooter ? "ok" : "warn",
-      detectedValue: inFooter ? "フッターに記載あり" : "フッターに見当たらない",
+      label: "サイト内：住所",
+      status: inSite ? "ok" : "warn",
+      detectedValue: inSite ? "サイト内に記載あり" : "サイト内に見当たらない",
       recommendedValue: spec.address,
-      suggestion: inFooter ? undefined : `フッターに住所「${spec.address}」を記載してください。`,
-      score: inFooter ? 15 : 0,
+      suggestion: inSite ? undefined : `サイト内（会社情報・お問い合わせページ等）に住所「${spec.address}」を記載してください。`,
+      score: inSite ? 15 : 0,
       maxScore: 15,
       priority: "medium",
     });
   } else {
-    checks.push({ id: "nap_footer_address", label: "フッター：住所（SPEC未入力）", status: "skip", score: 0, maxScore: 0, priority: "low" });
+    checks.push({ id: "nap_footer_address", label: "サイト内：住所（SPEC未入力）", status: "skip", score: 0, maxScore: 0, priority: "low" });
   }
 
-  // フッター 電話番号
+  // サイト内 電話番号
   if (spec?.tel) {
     // +81-53- 国際表記を 053- 国内表記に変換してから比較
     const telForCompare = spec.tel.replace(/^\+81[- ]?/, "0");
     const normTel = normalize(telForCompare).replace(/-/g, "");
     const normFooter = footerText.replace(/-/g, "");
-    const inFooter = normFooter.includes(normTel);
+    const normBody = bodyText.replace(/-/g, "");
+    const inSite = normFooter.includes(normTel) || normBody.includes(normTel);
     checks.push({
       id: "nap_footer_tel",
-      label: "フッター：電話番号",
-      status: inFooter ? "ok" : "warn",
-      detectedValue: inFooter ? "フッターに記載あり" : "フッターに見当たらない",
+      label: "サイト内：電話番号",
+      status: inSite ? "ok" : "warn",
+      detectedValue: inSite ? "サイト内に記載あり" : "サイト内に見当たらない",
       recommendedValue: spec.tel,
-      suggestion: inFooter ? undefined : `フッターに電話番号「${spec.tel}」を記載してください。`,
-      score: inFooter ? 15 : 0,
+      suggestion: inSite ? undefined : `サイト内（お問い合わせ・会社情報ページ等）に電話番号「${spec.tel}」を記載してください。`,
+      score: inSite ? 15 : 0,
       maxScore: 15,
       priority: "medium",
     });
   } else {
-    checks.push({ id: "nap_footer_tel", label: "フッター：電話番号（SPEC未入力）", status: "skip", score: 0, maxScore: 0, priority: "low" });
+    checks.push({ id: "nap_footer_tel", label: "サイト内：電話番号（SPEC未入力）", status: "skip", score: 0, maxScore: 0, priority: "low" });
   }
 
   // JSON-LD と HTML の一致
