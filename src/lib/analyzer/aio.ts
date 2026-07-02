@@ -27,7 +27,7 @@ export function analyzeAIO($: CheerioAPI) {
     $("details").length > 0 ||
     $("dl").length > 0 ||
     /[Ｑｑq][．.：:]\s/.test(bodyText) ||
-    /よくある質問|FAQ|Q&A/i.test(bodyText);
+    /よくある(ご)?質問|FAQ|Q&A/i.test(bodyText);
   checks.push({
     id: "aio_faq_section",
     label: "FAQセクション（Q&A形式コンテンツ）",

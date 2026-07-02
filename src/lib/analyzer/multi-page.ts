@@ -186,6 +186,27 @@ function mergeSubpageSignals(main$: CheerioAPI, sub$: CheerioAPI): void {
     }
   });
 
+  // NAP・権威性テキストを含む table / dl / address をメインに合成（NAP軸・AIO軸の検出用）。
+  // nap.ts の判定は be952dc で「フッター限定」→「サイト内のどこか」に拡張済みだが、
+  // 走査対象がメインページのみだったため、会社概要ページ等の住所・電話・許認可の
+  // 記載（会社情報テーブル）が拾えていなかった検知漏れを修正する。
+  // 合成はNAP/権威性キーワードを含む要素に限定し、判定自体は緩和しない。
+  const napAuthorityPattern =
+    /〒\s*\d{3}|\d{3}-\d{4}|(?:TEL|FAX|電話|Tel)|\d{2,4}[-ー]\d{2,4}[-ー]\d{4}|受賞|表彰|認定|認可|許可|免許|資格|掲載/;
+  sub$("table, dl, address").each((_, el) => {
+    const $el = sub$(el);
+    const text = $el.text();
+    if (text.length > 0 && text.length < 8000 && napAuthorityPattern.test(text)) {
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      main$("body").append(
+        `<div data-merged-nap-authority="true">${escaped}</div>`
+      );
+    }
+  });
+
   // 代表者・著者の顔写真っぽい img をメインに合成（EEAT軸の検出用）。
   // 判定キーワードは eeat.ts の analyzeEEAT と同じセット（代表/顔/プロフィール/profile/author/staff など）。
   // サブページ（about / company / profile）に代表者の顔写真がある場合、
