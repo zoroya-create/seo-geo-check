@@ -108,9 +108,12 @@ export function analyzeNAP($: CheerioAPI, spec?: SpecInfo) {
   if (telWithMarkerMatches.length > 0) {
     telPatterns = telWithMarkerMatches.map((m) => m[1]);
   } else {
-    // フォールバック: FAX除外して全電話番号スキャン
+    // フォールバック: FAX・日付を除外して全電話番号スキャン
+    // （normalize で空白が消えるため「2025-11-30 08:00」等の日付+時刻が
+    //   「2025-11-3008」となり電話番号パターンに誤マッチする。日付は電話番号ではない）
     const cleanedBody = bodyText
-      .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\s:：]*[\d()\-ー]{8,15}/gi, "");
+      .replace(/(?:FAX|fax|ファックス|ｆａｘ)[\s:：]*[\d()\-ー]{8,15}/gi, "")
+      .replace(/(?:19|20)\d{2}[-ー]\d{1,2}[-ー]\d{1,2}/g, "");
     telPatterns = [
       ...(cleanedBody.match(/\d{2,4}[-ー]\d{2,4}[-ー]\d{4}/g) ?? []),
       ...(cleanedBody.match(/\(\d{2,4}\)\d{2,4}[-ー]\d{4}/g) ?? []),

@@ -86,7 +86,7 @@ export function analyzeEEAT($: CheerioAPI, url: string) {
   });
 
   // プライバシーポリシー
-  const hasPrivacy = /プライバシー|privacy/i.test(allText);
+  const hasPrivacy = /プライバシー|privacy|個人情報保護/i.test(allText);
   checks.push({
     id: "eeat_privacy",
     label: "プライバシーポリシーリンク",

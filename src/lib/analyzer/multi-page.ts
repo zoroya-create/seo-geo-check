@@ -22,9 +22,13 @@ const CANDIDATE_PATHS = [
   "/concept/faq/",
   // 会社情報・アクセス系（MEO/NAP に直結）
   "/company/",
+  "/company-profile/",
+  "/company-info/",
   "/about/",
   "/about-us/",
+  "/profile/",
   "/contact/",
+  "/inquiry/",
   "/access/",
   // 流れ・コンセプト系
   "/concept/flow/",
@@ -32,7 +36,7 @@ const CANDIDATE_PATHS = [
 ];
 
 /** 試行するサブページの最大数（過剰なリクエストを避ける） */
-const MAX_SUBPAGES = 8;
+const MAX_SUBPAGES = 12;
 
 /** サブページ取得時のタイムアウト（ms） */
 const SUBPAGE_TIMEOUT_MS = 6000;
