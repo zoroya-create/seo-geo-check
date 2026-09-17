@@ -69,7 +69,16 @@ export function analyzeAIO($: CheerioAPI) {
   });
 
   // Article / WebPage スキーマ
-  const hasArticleOrWebPage = schemas.some((s) => hasType(s, ["Article", "WebPage"]));
+  // schema.org 上は CollectionPage・AboutPage・BlogPosting なども Article / WebPage の子クラス。
+  // hasType は部分一致なので、名前に "Article" / "WebPage" を含まない子クラスを明示的に足す（検知漏れ修正）
+  const ARTICLE_OR_WEBPAGE_TYPES = [
+    "Article", "WebPage",
+    "BlogPosting", "LiveBlogPosting", "SocialMediaPosting", "DiscussionForumPosting", "Report",
+    "AboutPage", "CheckoutPage", "CollectionPage", "ContactPage", "FAQPage", "ItemPage",
+    "ProfilePage", "QAPage", "RealEstateListing", "SearchResultsPage", "MediaGallery",
+    "ImageGallery", "VideoGallery",
+  ];
+  const hasArticleOrWebPage = schemas.some((s) => hasType(s, ARTICLE_OR_WEBPAGE_TYPES));
   checks.push({
     id: "aio_article_schema",
     label: "Article / WebPageスキーマ",

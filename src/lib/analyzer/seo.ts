@@ -2,10 +2,21 @@ import type { CheerioAPI } from "cheerio";
 import type { CheckItem, SpecInfo } from "../types";
 import { buildAxisResult } from "./score";
 
-export function analyzeSEO($: CheerioAPI, spec?: SpecInfo) {
+/**
+ * キーワードが文字列に含まれるか（検知漏れ修正）
+ * 「墨田区 不動産売却」のような検索語は、空白で区切った語がすべて含まれていれば一致とみなす。
+ * 日本語のタイトルや見出しには語の間に空白が入らないため、空白込みの完全一致では必ず外れていた。
+ * 空白を含まないキーワードは、これまでどおり完全一致で判定する。
+ */
+function containsKeyword(text: string, keyword: string): boolean {
+  const tokens = keyword.split(/[\s　]+/).filter(Boolean);
+  if (tokens.length === 0) return false;
+  return tokens.every((t) => text.includes(t));
+}
+
+export function analyzeSEO($: CheerioAPI, spec?: SpecInfo, pageUrl?: string) {
   const checks: CheckItem[] = [];
   const kw = spec?.keywords ?? [];
-  const bodyText = $("body").text();
 
   // title 存在
   const title = $("title").first().text().trim();
@@ -40,7 +51,7 @@ export function analyzeSEO($: CheerioAPI, spec?: SpecInfo) {
 
   // title キーワード
   if (kw.length > 0) {
-    const hit = kw.some((k) => title.includes(k));
+    const hit = kw.some((k) => containsKeyword(title, k));
     checks.push({
       id: "seo_title_kw",
       label: "titleキーワード含有",
@@ -89,7 +100,7 @@ export function analyzeSEO($: CheerioAPI, spec?: SpecInfo) {
 
   // meta description キーワード
   if (kw.length > 0 && desc) {
-    const hit = kw.some((k) => desc.includes(k));
+    const hit = kw.some((k) => containsKeyword(desc, k));
     checks.push({
       id: "seo_desc_kw",
       label: "meta descriptionキーワード含有",
@@ -123,7 +134,7 @@ export function analyzeSEO($: CheerioAPI, spec?: SpecInfo) {
 
   // h1 キーワード
   if (kw.length > 0 && h1Text) {
-    const hit = kw.some((k) => h1Text.includes(k));
+    const hit = kw.some((k) => containsKeyword(h1Text, k));
     checks.push({
       id: "seo_h1_kw",
       label: "h1キーワード含有",
@@ -195,9 +206,26 @@ export function analyzeSEO($: CheerioAPI, spec?: SpecInfo) {
   });
 
   // 内部リンク
+  // 同じサイト内へのリンクを数える（検知漏れ修正）
+  //  - 「/」「#」「./」始まりの相対リンク
+  //  - 完全URLでもホストが同じもの（WordPressは完全URLで出力することが多い）
+  //  - 「//」始まりはプロトコル省略の完全URLなので、ホストで判定する（外部サイトを内部と数えない）
+  const pageHost = (() => {
+    try { return pageUrl ? new URL(pageUrl).host.replace(/^www\./, "") : ""; } catch { return ""; }
+  })();
   const internalLinks = $("a[href]").filter((_, el) => {
-    const href = $(el).attr("href") ?? "";
-    return href.startsWith("/") || href.startsWith("#") || href.includes(bodyText.slice(0, 20));
+    const href = ($(el).attr("href") ?? "").trim();
+    if (!href) return false;
+    if (!href.startsWith("//") && (href.startsWith("/") || href.startsWith("#") || href.startsWith("./") || href.startsWith("../"))) {
+      return true;
+    }
+    if (!pageHost || !pageUrl) return false;
+    try {
+      const u = new URL(href, pageUrl);
+      return (u.protocol === "http:" || u.protocol === "https:") && u.host.replace(/^www\./, "") === pageHost;
+    } catch {
+      return false;
+    }
   }).length;
   checks.push({
     id: "seo_internal_links",

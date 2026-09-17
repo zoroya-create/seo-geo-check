@@ -70,7 +70,7 @@ export async function runDiagnosis(req: DiagnoseRequest, emitFn: Emit): Promise<
 
     // STEP 3: SEO
     emit(emitFn, 3);
-    const seo = analyzeSEO($, spec);
+    const seo = analyzeSEO($, spec, finalUrl);
 
     // STEP 4: MEO
     emit(emitFn, 4);

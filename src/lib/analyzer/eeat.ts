@@ -101,7 +101,14 @@ export function analyzeEEAT($: CheerioAPI, url: string) {
 
   // 特定商取引法
   const hasCommercial = /特定商取引|特商法|返品|返金|支払い方法|キャンセル/.test(allText);
-  const hasEcommerce = /購入|カート|注文|buy now|add to cart/i.test(allText);
+  // EC判定（検知漏れ修正）
+  //  - カート・買い物かごなど通販にしか出ない語があれば、業種を問わずECとみなす
+  //  - 「購入」「注文」は、宅地建物取引業者の「物件の購入」や工務店の「注文住宅」でも出るので、
+  //    宅建業の表示があるサイトでは単独でECの根拠にしない（通販の特商法表示の対象ではないため）
+  const isRealEstateBroker = /宅地建物取引業|宅建業/.test(allText);
+  const hasCartSignal = /カート|買い物かご|買い物カゴ|buy now|add to cart/i.test(allText);
+  const hasPurchaseWord = /購入|注文/.test(allText.replace(/注文住宅/g, ""));
+  const hasEcommerce = hasCartSignal || (!isRealEstateBroker && hasPurchaseWord);
   if (hasEcommerce) {
     checks.push({
       id: "eeat_commercial",
